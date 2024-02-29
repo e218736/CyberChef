@@ -8,7 +8,6 @@ import HTMLOperation from "../HTMLOperation.mjs";
 import Sortable from "sortablejs";
 import {fuzzyMatch, calcMatchRanges} from "../../core/lib/FuzzyMatch.mjs";
 
-
 /**
  * Waiter to handle events related to the operations.
  */
@@ -351,13 +350,118 @@ class OperationsWaiter {
         this.manager.recipe.initialiseOperationDragNDrop();
     }
 
-
     /**
      * Handler for reset favourites click events.
      * Resets favourites to their defaults.
      */
     resetFavouritesClick() {
         this.app.resetFavourites();
+    }
+
+    /**
+    * Handler that allows users to open favourite modal by "Enter/Space".
+    * This codes mimics editFavouritesClick event handler.
+    * @param {Event} ev
+    */
+    editFavouritesKeyPress(ev) {
+        if (ev.key === "Enter" || ev.key === "Space" || ev.key === " ") {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const favCat = this.app.categories.filter(function (c) {
+                return c.name === "Favourites";
+            })[0];
+
+            let html = "";
+            for (let i = 0; i < favCat.ops.length; i++) {
+                const opName = favCat.ops[i];
+                const operation = new HTMLOperation(opName, this.app.operations[opName], this.app, this.manager);
+                html += operation.toStubHtml(true);
+            }
+
+            const editFavouritesList = document.getElementById("edit-favourites-list");
+            editFavouritesList.innerHTML = html;
+            this.removeIntent = false;
+
+            const editableList = Sortable.create(editFavouritesList, {
+                filter: ".remove-icon",
+                onFilter: function (evt) {
+                    const el = editableList.closest(evt.item);
+                    if (el && el.parentNode) {
+                        $(el).popover("dispose");
+                        el.parentNode.removeChild(el);
+                    }
+                },
+                onEnd: function (evt) {
+                    if (this.removeIntent) {
+                        $(evt.item).popover("dispose");
+                        evt.item.remove();
+                    }
+                }.bind(this),
+            });
+
+            $("#edit-favourites-list [data-toggle=popover]").popover();
+            $("#favourites-modal").modal();
+
+        }
+    }
+
+    /**
+   * Handler for on key press events.
+   * Get the children of categories and add event listener to them.
+   */
+    onKeyPress() {
+        const cat = document.getElementById("categories");
+        for (let i = 0; i < cat.children.length; i++) {
+            cat.children[i].addEventListener("keydown", this.keyboardEventHandler, false);
+        }
+    }
+
+    /**
+    * Handler for keyboard enter/space events.
+    * Uses "Enter" or "Space" to mimic the click function and open the operations panels .
+    * @param {Event} ev
+    */
+    keyboardEventHandler(ev) {
+        if (ev.key === "Enter" || ev.key === "Space" || ev.key === " ") {
+            ev.preventDefault();
+            for (let i = 0; i < ev.target.childNodes.length; i++) {
+                const targetChild = ev.target.childNodes[i].classList;
+                if (targetChild !== undefined && targetChild.value.includes("panel-collapse collapse")) {
+                    if (!targetChild.contains("show")) {
+                        targetChild.add("show");
+                    } else if (targetChild.contains("show")) {
+                        targetChild.remove("show");
+                    }
+
+                }
+
+            }
+        }
+
+    }
+
+    /**
+     * Handler to populate recipe.
+     * Get the children of op-list and add event listener to them.
+     */
+    operationPopulateRecipe() {
+        const cat = document.querySelectorAll(".op-list li.operation");
+        for (let i = 0; i < cat.children.length; i++) {
+            cat.children[i].addEventListener("keydown", this.keyboardPopulateRecipe, false);
+        }
+
+    }
+
+    /**
+     * Handler to add operators to recipe with keyboard.
+     * Uses keyboard shortcut "CTRl + Enter" to mimic operationDblClick handler function
+     * @param {Event} ev
+     */
+    keyboardPopulateRecipe(ev) {
+        if (ev.ctrlKey && ev.key === "Enter") {
+            const li = ev.target;
+            this.manager.recipe.addOperation(li.textContent);
+        }
     }
 
 }

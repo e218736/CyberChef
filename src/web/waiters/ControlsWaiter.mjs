@@ -33,7 +33,7 @@ class ControlsWaiter {
             animation: false,
             container: "body",
             boundary: "viewport",
-            trigger: "hover"
+            trigger: "hover focus"
         });
     }
 
